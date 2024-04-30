@@ -30,7 +30,6 @@ namespace WikiSQL.Function
             }
 
             var items = await ProcessArticles(changes);
-
             return items;
         }
 
