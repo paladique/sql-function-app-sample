@@ -26,12 +26,9 @@ namespace WikiSQL.Function
                 title = "Weather",
                 url = "",
                 description = ""
-
             };
             
             return item;
-        }
-
-      
+        }      
     }
 }

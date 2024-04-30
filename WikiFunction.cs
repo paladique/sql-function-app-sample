@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
+using System.ComponentModel.Design;
 
 namespace WikiSQL.Function
 {
@@ -23,14 +24,11 @@ namespace WikiSQL.Function
         {
             _logger.LogInformation("SQL Changes: " + JsonConvert.SerializeObject(changes));
 
-            //This function is for inserts only, quit if batch is all updates
-            if (changes.All(c => c.Operation == SqlChangeOperation.Update))
-            {
-                return null;
-            }
+            //extract the changes from the trigger that are insert operations
+            var insertChanges = changes.Where(c => c.Operation == SqlChangeOperation.Insert);
 
             var items = await ProcessArticles(changes);
-            return items;
+            return items; //update table
         }
 
 
@@ -39,15 +37,11 @@ namespace WikiSQL.Function
             List<Article> articles = new List<Article>();
             foreach (var change in changes)
             {
-
                 if (change.Operation == SqlChangeOperation.Insert)
                 {
                     var a = await GetWikiDetails(change.Item.title, change.Item.id);
-
                     _logger.LogInformation("Item: " + JsonConvert.SerializeObject(change.Item));
-
                     articles.Add(a);
-
                 }
             }
             return articles;
@@ -61,7 +55,6 @@ namespace WikiSQL.Function
                 response.EnsureSuccessStatusCode();
                 var responseBody = await response.Content.ReadFromJsonAsync<Article>();
 
-
                 Article article = new Article
                 {
                     id = id,
@@ -71,9 +64,7 @@ namespace WikiSQL.Function
                 };
 
                 return article;
-
             }
-
         }
     }
 }
