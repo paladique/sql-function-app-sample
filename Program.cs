@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
-using System.IO;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()

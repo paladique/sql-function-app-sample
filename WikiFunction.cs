@@ -1,12 +1,10 @@
-using System;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.Functions.Worker.Extensions.Sql;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Microsoft.Extensions.Configuration;
 using System.Net.Http.Json;
-
+using Microsoft.AspNetCore.Http;
 
 namespace WikiSQL.Function
 {
@@ -18,7 +16,6 @@ namespace WikiSQL.Function
         {
             _logger = loggerFactory.CreateLogger<WikiFunction>();
         }
-
         [Function("WikiFunction")]
         [SqlOutput("[dbo].[wikipedia_weather_articles]", "SqlConnectionString")]
         public async Task<IEnumerable<Article>> Run(
@@ -26,10 +23,17 @@ namespace WikiSQL.Function
         {
             _logger.LogInformation("SQL Changes: " + JsonConvert.SerializeObject(changes));
 
+            //This function is for inserts only, quit if batch is all updates
+            if (changes.All(c => c.Operation == SqlChangeOperation.Update))
+            {
+                return null;
+            }
+
             var items = await ProcessArticles(changes);
 
             return items;
         }
+
 
         private async Task<List<Article>> ProcessArticles(IReadOnlyList<SqlChange<Article>> changes)
         {
@@ -39,7 +43,7 @@ namespace WikiSQL.Function
 
                 if (change.Operation == SqlChangeOperation.Insert)
                 {
-                    var a = await GetWikiDetails(change.Item.title);
+                    var a = await GetWikiDetails(change.Item.title, change.Item.id);
 
                     _logger.LogInformation("Item: " + JsonConvert.SerializeObject(change.Item));
 
@@ -50,7 +54,7 @@ namespace WikiSQL.Function
             return articles;
         }
 
-        private async Task<Article> GetWikiDetails(string? title)
+        private async Task<Article> GetWikiDetails(string? title, int? id)
         {
             using (HttpClient client = new HttpClient())
             {
@@ -58,8 +62,10 @@ namespace WikiSQL.Function
                 response.EnsureSuccessStatusCode();
                 var responseBody = await response.Content.ReadFromJsonAsync<Article>();
 
+
                 Article article = new Article
                 {
+                    id = id,
                     url = "https://en.wikipedia.org/wiki/" + title,
                     title = title,
                     description = responseBody.description
